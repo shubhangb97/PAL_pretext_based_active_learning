@@ -11,7 +11,7 @@
 - OpenCV==4.5.1
 
 ### Instructions
-Firstly, download and extract the dataset on which the code is to be run by in a folder `./data` for classification in this directory or in `./cityscapes` in this directory for segmentation.
+Firstly, download and extract the dataset on which the code is to be run by in a folder `./data` for classification in this directory or in `./data/cityscapes` in this directory for segmentation.
 For running PAL on one of the implemented datasets (CIFAR-10, Cityscapes, SVHN, Caltech-101)-
 - choose the appropriate arguments by uncommenting them in arguments.py file as command parameter as specified by us in the technical appendix including
  - --dataset from cifar10, cityscapes, caltech101, svhn
@@ -19,21 +19,21 @@ For running PAL on one of the implemented datasets (CIFAR-10, Cityscapes, SVHN, 
  -  --batch_size
  - --data_path the path to where the datasets are already present or should be downloaded to
 -  Run the experiment by using the command-
-`python Classification_PAL/main.py --cuda` or `python Segmentation_PAL/main.py --cuda`
+`python Classification_PAL/main.py` or `python Segmentation_PAL/main.py`
 - The accuracies of the task model trained after each query will be saved in a log file in the results folder
 
 **Noisy Labels** - For reproducing PAL results with noisy labels on classification (CIFAR-10 or SVHN) or segmentation (Cityscapes) run the following command-
 
-`python Noisy_label_classification_PAL/main.py --cuda`
+`python Noisy_label_classification_PAL/main.py`
 
 or
 
-`python Noisy_label_segmentation_PAL/main.py --cuda`
+`python Noisy_label_segmentation_PAL/main.py`
 
 **Biased initial pool**- For reproducing results of PAL using a biased pool (with classes missing), on classification (SVHN) or segmentation (Cityscapes) run the following command-
 
-`python Biased_pool_classification_PAL/main.py --cuda`
+`python Biased_pool_classification_PAL/main.py`
 
 or
 
-`python Biased_pool_segmentation_PAL/main.py --cuda`
+`python Biased_pool_segmentation_PAL/main.py`

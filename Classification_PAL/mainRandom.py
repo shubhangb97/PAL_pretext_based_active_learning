@@ -222,10 +222,10 @@ def main(args):
             rotNet1=RotNetMulti(num_classes=args.num_classes,num_rotations=4)
 
         rotNet1.cuda()
-        rotNet1=nn.DataParallel(rotNet1)
+        #rotNet1=nn.DataParallel(rotNet1)
 
         task_model=task_model.cuda()
-        task_model=nn.DataParallel(task_model)
+        #task_model=nn.DataParallel(task_model)
 
         #Get unlabeleled indice dataloader
 
