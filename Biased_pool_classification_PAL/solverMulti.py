@@ -53,7 +53,7 @@ class Solver:
 
         for epoch in range(0,rot_epochs):
 
-            #Scheduling for SGD not if using Adam !!!!
+            #Scheduling for SGD only
             if( (self.args.scheduler_Rot == "decay_step") and not(self.args.optim_Rot == 'adam')):
                 if epoch is not 0 and epoch % lr_change == 0:
                     for param in optim_rot_net.param_groups:
@@ -274,8 +274,8 @@ class Solver:
 
             totalclass += data2.size(0)
             total += data.size(0)
-        print("Test accuracy is "+str((correctclass / totalclass) * 100))
-        print("Rotation accuracy is "+str((correct / total) * 100))
+        #print("Test accuracy is "+str((correctclass / totalclass) * 100))
+        #print("Rotation accuracy is "+str((correct / total) * 100))
         print("Validation mein Loss "+str(lossTotal.item())+" validation loss rotation "+str(lossRotTot.item())+"validation loss classification "+str(lossClTot.item()))
         if self.args.valtype == "loss":
             rot_net.train()

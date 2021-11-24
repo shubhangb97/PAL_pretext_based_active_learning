@@ -106,7 +106,7 @@ def main(args):
                                                task_model,
                                                num_img1)
 
-        print('Final accuracy of RotNet with {}% of data is: {:.2f}'.format(int(split*100), acc))
+        print('Final mIoU of Task Network with {}% of data is: {:.2f}'.format(int(split*100), acc))
         accuracies.append(acc)
         #----------Sampling----------------------------
         new_random=random.sample(list(remain_indices),args.budget)

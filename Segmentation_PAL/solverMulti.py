@@ -135,7 +135,6 @@ class Solver:
                 {'params': task_model.module.model.backbone.parameters(), 'lr': 0.1*self.args.lr_task},
                 {'params': task_model.module.model.classifier.parameters(), 'lr': self.args.lr_task},
             ], lr=self.args.lr_task, momentum=0.9, weight_decay=10e-4)
-                                                               last_epoch=-1)
         best_model=task_model
         best_accuracy=0
         for epoch in range(self.args.train_epochs):

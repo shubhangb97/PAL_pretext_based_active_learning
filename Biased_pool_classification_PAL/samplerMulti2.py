@@ -188,7 +188,9 @@ class RotSampler:
         num1=0
         rot_net0=copy.deepcopy(rot_net)
         rot_net1=copy.deepcopy(rot_net)
+        print("\n \n Sampling")
         for iter1 in range(0,iters):
+            print("Sub Query is \n"+str(num1))
             current_unlabeled_indices=np.setdiff1d(unlabeled_indices,sampled_indices)
             current_unlabeled_indices=list(current_unlabeled_indices)
 
@@ -260,7 +262,7 @@ class RotSampler:
 
                 optim_rot_net.step()
 
-            print("Epoch number "+str(epoch)+" Loss "+str(lossTotal.item())+" loss rotation "+str(lossTotal.item()))
+            #print("Epoch number "+str(epoch)+" Loss "+str(lossTotal.item())+" loss rotation "+str(lossTotal.item()))
 
             if epoch%1 == 0:
                 acc1=self.validate_rot_net(rot_net,val_dataloader)

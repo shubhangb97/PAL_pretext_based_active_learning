@@ -1,4 +1,3 @@
-#Run this in place of main.py to run the Random sampling baseline with hyperparameters in arguments
 import os
 os.environ['PYTHONHASHSEED']=str(101)
 
@@ -22,12 +21,12 @@ from RotNetModel1 import RotNetMulti
 from RotNetModel1 import RotNetMultiPretrained
 import numpy as np
 import argparse
-import torch.nn as nn
-import vggcifar
+from PIL import Image
+
 
 import samplerMulti2
 from custom_datasets import *
-import vggcifarpretrained
+import vggcifar
 from solverMulti import Solver
 import arguments
 
@@ -51,16 +50,6 @@ def cifar100_transformer():
         ])
 
 
-def caltech256_transformer():
-    return transforms.Compose([
-            transforms.Lambda(lambda x: x.convert("RGB") ),
-            transforms.RandomHorizontalFlip(),
-            transforms.Resize((224,224)),
-            transforms.ToTensor(),
-            transforms.Normalize(mean=[0.5070751592371323, 0.48654887331495095, 0.4409178433670343],
-                                std=[0.2673342858792401, 0.2564384629170883, 0.27615047132568404]),
-        ])
-
 def svhn_transformer():
     return transforms.Compose([
             transforms.RandomHorizontalFlip(),
@@ -68,20 +57,12 @@ def svhn_transformer():
             transforms.Normalize(mean=[0.5070751592371323, 0.48654887331495095, 0.4409178433670343],
                                 std=[0.2673342858792401, 0.2564384629170883, 0.27615047132568404]),
         ])
-def caltech101_transformer():
-    return transforms.Compose([
-            transforms.Lambda(lambda x: x.convert("RGB") ),
-            transforms.RandomHorizontalFlip(),
-            transforms.Resize((224,224)),
-            transforms.ToTensor(),
-            transforms.Normalize(mean=[0.5070751592371323, 0.48654887331495095, 0.4409178433670343],
-                                std=[0.2673342858792401, 0.2564384629170883, 0.27615047132568404]),
-        ])
+
 
 def main(args):
 
     print("Seed 101")
-
+    print(args)
     if args.dataset == 'cifar10':
         test_dataloader = data.DataLoader(
                 datasets.CIFAR10(args.data_path, download=True, transform=cifar10_transformer(), train=False),
@@ -89,7 +70,6 @@ def main(args):
 
         train_dataset = CIFAR10(args.data_path)
         rot_train_dataset = rot_CIFAR10(args.data_path)
-        rot_test_dataset = rot_CIFAR10(args.data_path)
 
         args.num_images = 50000
         args.num_val = 5000
@@ -103,7 +83,6 @@ def main(args):
 
         train_dataset = CIFAR100(args.data_path)
         rot_train_dataset = rot_CIFAR100(args.data_path)
-        rot_test_dataset = rot_CIFAR100(args.data_path)
 
         args.num_val = 5000
         args.num_images = 50000
@@ -124,40 +103,6 @@ def main(args):
         args.initial_budget = 128120
         args.num_classes = 1000
 
-    elif args.dataset == 'caltech256':
-
-        args.num_val = 3000
-        args.num_images = 27607
-        args.budget = 1530
-        args.initial_budget = 3060
-        args.num_classes = 257
-
-        all_indices = set(np.arange(args.num_images))
-        test_indices=random.sample(list(all_indices),1530)
-        test_sampler = data.sampler.SubsetRandomSampler(test_indices)
-        all_indices = np.setdiff1d(list(all_indices), test_indices)
-        train_dataset = Caltech256(args.data_path)
-
-        test_dataloader=data.DataLoader(train_dataset,sampler=test_sampler,batch_size=args.batch_size,drop_last=False,num_workers=0)
-        rot_train_dataset = rot_Caltech256(args.data_path)
-
-    elif args.dataset == 'caltech101':
-
-        args.num_val = 914
-        args.num_images = 8232#9146
-        args.budget = 411#1530
-        args.initial_budget = 822#3060
-        args.num_classes = 102#256
-
-        all_indices = set(np.arange(args.num_images))
-        test_indices=random.sample(list(all_indices),822)
-        test_sampler = data.sampler.SubsetRandomSampler(test_indices)
-        all_indices = np.setdiff1d(list(all_indices), test_indices)
-        train_dataset = Caltech101(args.data_path)
-
-        test_dataloader=data.DataLoader(train_dataset,sampler=test_sampler,batch_size=args.batch_size,drop_last=False,num_workers=0)
-        rot_train_dataset = rot_Caltech101(args.data_path)
-
     elif args.dataset == 'svhn' :
         test_dataloader = data.DataLoader(datasets.SVHN(args.data_path,download=True,transform=svhn_transformer(), split='test'),batch_size=args.batch_size,drop_last=False,num_workers=0)
         train_dataset= SVHN(args.data_path)
@@ -172,28 +117,44 @@ def main(args):
 
     else:
         raise NotImplementedError
-    print("Random sampling")
-    if not(args.dataset == 'caltech256' or args.dataset=='caltech101'):
-        all_indices = set(np.arange(args.num_images))
 
-    if not(args.dataset=="tinyImageNet"):
-        val_indices = random.sample(list(all_indices), args.num_val)
-        all_indices = np.setdiff1d(list(all_indices), val_indices)
+    all_indices = set(np.arange(args.num_images))
 
-    initial_indices = random.sample(list(all_indices), args.initial_budget)
+    val_indices = random.sample(list(all_indices), args.num_val)
+    all_indices = np.setdiff1d(list(all_indices), val_indices)
+
+    indices1=[]
+    indices2=[]
+
+    allclass=set(np.arange(args.num_classes))
+    allclass=list(allclass)
+    classbiased=random.sample(allclass,args.biased)
+    print("Biasing"+str(classbiased))
+    torch.save(classbiased,"biased1.log")
+    allclass=np.setdiff1d(allclass,classbiased)
+
+    num1=len(all_indices)
+    n1=0
+    while(n1<num1):
+        _,label1,_,_=rot_train_dataset[all_indices[n1]]
+        if(label1 not in classbiased):
+            indices1.append(all_indices[n1])
+        else:
+            indices2.append(all_indices[n1])
+        n1=n1+1
+
+    initial_indices=random.sample(list(indices1),args.initial_budget)
+
     sampler = data.sampler.SubsetRandomSampler(initial_indices)
-    if not(args.dataset=="tinyImageNet"):
-        val_sampler = data.sampler.SubsetRandomSampler(val_indices)
+    val_sampler = data.sampler.SubsetRandomSampler(val_indices)
 
     # dataset with labels available
     querry_dataloader = data.DataLoader(train_dataset, sampler=sampler,
             batch_size=args.batch_size, drop_last=True,num_workers=0)
-    if not(args.dataset=="tinyImageNet"):
-        val_dataloader = data.DataLoader(train_dataset, sampler=val_sampler,
-                batch_size=args.batch_size, drop_last=False,num_workers=0)
+    val_dataloader = data.DataLoader(train_dataset, sampler=val_sampler,
+            batch_size=args.batch_size, drop_last=False,num_workers=0)
     rot_dataloader=data.DataLoader(rot_train_dataset,sampler=sampler,batch_size=args.batch_size,drop_last=True,num_workers=0)
-    if not(args.dataset=="tinyImageNet"):
-        rot_val_dataloader=data.DataLoader(rot_train_dataset,sampler=val_sampler,batch_size=args.batch_size,drop_last=True,num_workers=0)
+    rot_val_dataloader=data.DataLoader(rot_train_dataset,sampler=val_sampler,batch_size=args.batch_size,drop_last=True,num_workers=0)
 
 
     solver = Solver(args, test_dataloader)
@@ -206,46 +167,40 @@ def main(args):
     accuracies = []
 
     for split in splits:
-        if args.dataset=="caltech256":
-            task_model=vggcifarpretrained.vgg16_pretrained(num_classes=args.num_classes)
-        else:
-            task_model = vggcifar.vgg16_bn(num_classes=args.num_classes)
-
-        if args.dataset=="caltech256":
-            rotNet1=RotNetMultiPretrained(num_classes=args.num_classes,num_rotations=4)
-        else:
-            rotNet1=RotNetMulti(num_classes=args.num_classes,num_rotations=4)
-
-        rotNet1.cuda()
-        #rotNet1=nn.DataParallel(rotNet1)
-
+        task_model = vggcifar.vgg16_bn(num_classes=args.num_classes)
         task_model=task_model.cuda()
-        #task_model=nn.DataParallel(task_model)
+
 
         #Get unlabeleled indice dataloader
 
         unlabeled_indices = np.setdiff1d(list(all_indices), current_indices)
-        remain_indices=np.setdiff1d(list(all_indices),current_indices)
         unlabeled_sampler = data.sampler.SubsetRandomSampler(unlabeled_indices)
         unlabeled_dataloader = data.DataLoader(train_dataset,
                 sampler=unlabeled_sampler, batch_size=args.batch_size, drop_last=False,num_workers=0)
         rot_unlabeled_dataloader=data.DataLoader(rot_train_dataset,sampler=unlabeled_sampler,batch_size=args.batch_size,drop_last=False,num_workers=0)
 
-
-        # train task model for this iteration
+        # Train task network on current labeled pool
         acc = solver.train(querry_dataloader,
                                                val_dataloader,
                                                task_model,
                                                unlabeled_dataloader,num_img1)
 
-        print('Final accuracy of Task network with {}% of data is: {:.2f}'.format(int(split*100), acc))
+
+        rotNet1=RotNetMulti(num_classes=args.num_classes,num_rotations=4)
+
+        rotNet1.cuda()
+
+        #Train scoring network
+        rotNet1=solver.rot_net_train(rot_dataloader,rotNet1,rot_val_dataloader,split)
+        print('Final accuracy of RotNet with {}% of data is: {:.2f}'.format(int(split*100), acc))
 
         accuracies.append(acc)
 
-        #sample randomly
+        # Sample from unlabeled pool using scoring network
+        sampled_indices=samplerRot.sample_query(rotNet1,unlabeled_indices,current_indices,rot_train_dataset,rot_val_dataloader)
 
-        new_random=random.sample(list(remain_indices),args.budget)
-        current_indices = list(current_indices) + list(new_random)
+        # Expand pool of labeled datapoints
+        current_indices = list(current_indices) + list(sampled_indices)
         sampler = data.sampler.SubsetRandomSampler(current_indices)
 
         querry_dataloader = data.DataLoader(train_dataset, sampler=sampler,batch_size=args.batch_size, drop_last=True,num_workers=0)

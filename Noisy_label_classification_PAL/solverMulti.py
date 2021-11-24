@@ -9,6 +9,9 @@ from custom_datasets import *
 import copy
 
 
+
+
+
 class Solver:
     def __init__(self, args, test_dataloader):
         self.args = args
@@ -17,23 +20,20 @@ class Solver:
         self.ce_loss = nn.CrossEntropyLoss()
         self.criterion=nn.CrossEntropyLoss()
 
+
     def rot_net_train(self,rot_querry_dataloader,rot_net,val_dataloader,split):
-        #trains scoring network
         state= {}
         rot_learning_rate = self.args.lr_rot
         rot_epochs = self.args.rot_train_epochs
         params1=rot_net.parameters()
 
         if self.args.optim_Rot == "sgd":
-            if self.args.dataset=="caltech256":
+            if (self.args.dataset=="caltech256"):
                 optim_rot_net = optim.SGD([{'params': rot_net.features.parameters()},{'params': rot_net.layer1.parameters(),'lr':0.01},{'params':rot_net.layer2.parameters(),'lr':0.01}], lr=rot_learning_rate, momentum=0.9,weight_decay = 5e-4,nesterov=True)
             else:
                 optim_rot_net = optim.SGD(params1, lr=rot_learning_rate, momentum=0.9,weight_decay = 5e-4,nesterov=True)
         elif self.args.optim_Rot == "adam":
-            if self.args.dataset=="caltech256":
-                optim_rot_net = optim.Adam([{'params': rot_net.features.parameters()},{'params': rot_net.layer1.parameters(),'lr':0.01},{'params':rot_net.layer2.parameters(),'lr':0.01}], lr=rot_learning_rate)
-            else:
-                optim_rot_net=torch.optim.Adam(params1,lr=rot_learning_rate)
+            optim_rot_net=torch.optim.Adam(params1,lr=rot_learning_rate)
 
         if self.args.scheduler_Rot == "cosine":
             scheduler_rot_model = optim.lr_scheduler.CosineAnnealingLR(optim_rot_net,
@@ -64,8 +64,6 @@ class Solver:
                 data=data.cuda()
                 label=label.cuda()
                 labelclass=labelclass.cuda()
-
-                #convert data to appropriate form for input to net.with batch_size* 4 as dim 1
                 data=data.view(data.shape[0]*4,data.shape[2],data.shape[3],data.shape[4])
                 label=label.view(label.shape[0]*4)
 
@@ -73,13 +71,10 @@ class Solver:
                 _,predClasses=rot_net(data2)
 
                 preds,_=rot_net(data)
-
-                #task loss
                 lossT=self.criterion(preds,label)
 
-                #self-supervision loss
-                lossClass=self.criterion(predClasses,labelclass)
 
+                lossClass=self.criterion(predClasses,labelclass)
 
                 w1=self.args.train_loss_weightRotation
                 w2=self.args.train_loss_weightClassif
@@ -91,7 +86,6 @@ class Solver:
                 else:
                     lossTotal = w1 * lossT +w2 * lossClass
 
-
                 optim_rot_net.zero_grad()
                 lossTotal.backward()
 
@@ -100,7 +94,6 @@ class Solver:
                     scheduler_rot_model.step()
 
             print("Epoch number "+str(epoch)+" Loss "+str(lossTotal.item())+" loss rotation "+str(lossTotal.item()-lossClass.item())+" loss classification "+str(lossClass.item()))
-
             if epoch%5 == 0:
                 acc1=self.validate_rot_net(rot_net,val_dataloader)
                 print("Loss at epoch "+str(epoch)+" is "+str(acc1.item()))
@@ -128,6 +121,19 @@ class Solver:
             while True:
                 for img, _, _ in dataloader:
                     yield img
+    def read_data1(self, dataloader, labels=True):
+        if labels:
+            while True:
+                for img, label, _,_ in dataloader:
+                    img=img.view(img.shape[0]*4,img.shape[2],img.shape[3],img.shape[4])
+                    img2=img[0:-1:4,:,:,:]
+                    yield img2, label
+        else:
+            while True:
+                for img, _, _,_ in dataloader:
+                    img=img.view(img.shape[0]*4,img.shape[2],img.shape[3],img.shape[4])
+                    img2=img[0:-1:4,:,:,:]
+                    yield img2
 
 
     def train(self, querry_dataloader, val_dataloader, task_model, unlabeled_dataloader,num_img):
@@ -140,15 +146,12 @@ class Solver:
         task_model_learning=self.args.lr_task
         params1=task_model.parameters()
         if self.args.optim_task == "sgd":
-            if self.args.dataset=="caltech256":
+            if (self.args.dataset=="caltech256"):
                 optim_task_model = optim.SGD([{'params': task_model.vgg16_1.features.parameters()},{'params': task_model.classifier.parameters(),'lr':0.01}], lr=task_model_learning, weight_decay=5e-4, momentum=0.9)
             else:
                 optim_task_model = optim.SGD(task_model.parameters(), lr=task_model_learning, weight_decay=5e-4, momentum=0.9)
         elif self.args.optim_task == "adam":
-            if self.args.dataset=="caltech256":
-                optim_task_model=torch.optim.Adam([{'params': task_model.vgg16_1.features.parameters()},{'params': task_model.classifier.parameters(),'lr':0.01}],lr=task_model_learning)
-            else:
-                optim_task_model=torch.optim.Adam(params1,lr=task_model_learning,weight_decay=10e-4)
+            optim_task_model=torch.optim.Adam(params1,lr=task_model_learning,weight_decay=10e-4)
 
         if self.args.scheduler_task == "cosine":
             scheduler_task_model = optim.lr_scheduler.CosineAnnealingLR(optim_task_model,
@@ -158,27 +161,27 @@ class Solver:
         elif self.args.scheduler_task == "decay_step":
             lr_change = self.args.train_iterations // 4
 
-        labeled_data = self.read_data(querry_dataloader)
-        unlabeled_data = self.read_data(unlabeled_dataloader, labels=False)
+        labeled_data = self.read_data1(querry_dataloader)
+        unlabeled_data = self.read_data1(unlabeled_dataloader, labels=False)
 
         task_model.train()
 
         task_model = task_model.cuda()
 
-        task_model.train()
         best_acc = 0
         for iter_count in range(self.args.train_iterations):
             if self.args.scheduler_task == "decay_step":
                 if iter_count is not 0 and iter_count % lr_change == 0:
                     for param in optim_task_model.param_groups:
                         param['lr'] = param['lr'] / 10
-            labeled_imgs, labels = next(labeled_data)
+            labeled_imgs, labels= next(labeled_data)
             unlabeled_imgs = next(unlabeled_data)
 
             labeled_imgs = labeled_imgs.cuda()
             unlabeled_imgs = unlabeled_imgs.cuda()
             labels = labels.cuda()
 
+            # task_model step
             preds = task_model(labeled_imgs)
             task_loss = self.ce_loss(preds, labels)
             optim_task_model.zero_grad()
@@ -206,10 +209,12 @@ class Solver:
         final_accuracy = self.test(best_model)
         return final_accuracy
 
+
+
     def validate(self, task_model, loader):
         task_model.eval()
         total, correct = 0, 0
-        for imgs, labels, _ in loader:
+        for imgs, labels, _,_ in loader:
             imgs = imgs.cuda()
 
             with torch.no_grad():
@@ -218,6 +223,8 @@ class Solver:
             preds = torch.argmax(preds, dim=1).cpu().numpy()
             correct += accuracy_score(labels, preds, normalize=False)
             total += imgs.size(0)
+            if(self.args.dataset != 'svhn'):
+                task_model.train()
         return correct / total * 100
 
 
@@ -236,6 +243,7 @@ class Solver:
             data=data.view(data.shape[0]*4,data.shape[2],data.shape[3],data.shape[4])
             label=label.view(label.shape[0]*4)
 
+
             data=data.cuda()
             label=label.cuda()
             labelclass=labelclass.cuda()
@@ -244,8 +252,6 @@ class Solver:
                 preds,_=rot_net(data)
                 data2=data[0:-1:4,:,:,:]
                 _,predClasses=rot_net(data2)
-
-
 
             lossT=self.criterion(preds,label)
 
@@ -266,17 +272,19 @@ class Solver:
             preds=preds.numpy()
             predClasses=predClasses.numpy()
 
+
             label=label.cpu().numpy()
             labelclass=labelclass.cpu().numpy()
+
 
             correct+= accuracy_score(label,preds,normalize=False)
             correctclass+= accuracy_score(labelclass,predClasses,normalize=False)
 
             totalclass += data2.size(0)
             total += data.size(0)
-        #print("Test accuracy is "+str((correctclass / totalclass) * 100))
-        #print("Rotation accuracy is "+str((correct / total) * 100))
-        print("Validation mein Loss "+str(lossTotal.item())+" validation loss rotation "+str(lossRotTot.item())+"validation loss classification "+str(lossClTot.item()))
+        print("Test accuracy is "+str((correctclass / totalclass) * 100))
+        print("Rotation accuracy is "+str((correct / total) * 100))
+        print("Validation Loss "+str(lossTotal.item())+" validation loss rotation "+str(lossRotTot.item())+"validation loss classification "+str(lossClTot.item()))
         if self.args.valtype == "loss":
             rot_net.train()
             return lossTotal
@@ -300,7 +308,7 @@ class Solver:
     def test(self, task_model):
         task_model.eval()
         total, correct = 0, 0
-        if(self.args.dataset=="caltech256" or self.args.dataset=="caltech101"):
+        if (self.args.dataset=="caltech256" or self.args.dataset=="caltech101"):
             for imgs, labels,_ in self.test_dataloader:
                 imgs = imgs.cuda()
 
@@ -321,4 +329,3 @@ class Solver:
                 correct += accuracy_score(labels, preds, normalize=False)
                 total += imgs.size(0)
         return correct / total * 100
-#cuda

@@ -28,7 +28,6 @@ import samplerMulti2
 from custom_datasets import *
 import vggcifar
 from solverMulti import Solver
-from utils import *
 import arguments
 
 def cifar10_transformer():
@@ -50,7 +49,6 @@ def cifar100_transformer():
                                 std=[0.2673342858792401, 0.2564384629170883, 0.27615047132568404]),
         ])
 
-
 def svhn_transformer():
     return transforms.Compose([
             transforms.RandomHorizontalFlip(),
@@ -61,6 +59,7 @@ def svhn_transformer():
 
 
 def main(args):
+
 
     print("Seed 101")
     print(args)
@@ -106,6 +105,7 @@ def main(args):
     else:
         raise NotImplementedError
 
+
     all_indices = set(np.arange(args.num_images))
 
     val_indices = random.sample(list(all_indices), args.num_val)
@@ -124,9 +124,6 @@ def main(args):
     rot_val_dataloader=data.DataLoader(rot_train_dataset,sampler=val_sampler,batch_size=args.batch_size,drop_last=True,num_workers=0)
 
 
-    args.cuda = args.cuda and torch.cuda.is_available()
-
-    print("Running on "+str(args.cuda))
 
     solver = Solver(args, test_dataloader)
     samplerRot=samplerMulti2.RotSampler(args.budget,args)
@@ -138,11 +135,13 @@ def main(args):
     accuracies = []
 
     for split in splits:
-        # use new samples
-        #retrin task model also retrain rotnet
 
         task_model = vggcifar.vgg16_bn(num_classes=args.num_classes)
+
+
         task_model=task_model.cuda()
+
+
         #Get unlabeleled indice dataloader
 
         unlabeled_indices = np.setdiff1d(list(all_indices), current_indices)
@@ -150,7 +149,6 @@ def main(args):
         unlabeled_dataloader = data.DataLoader(rot_train_dataset,
                 sampler=unlabeled_sampler, batch_size=args.batch_size, drop_last=False,num_workers=0)
         rot_unlabeled_dataloader=data.DataLoader(rot_train_dataset,sampler=unlabeled_sampler,batch_size=args.batch_size,drop_last=False,num_workers=0)
-
 
         acc = solver.train(querry_dataloader,
                                                val_dataloader,
@@ -162,7 +160,7 @@ def main(args):
         rotNet1.cuda()
 
         rotNet1=solver.rot_net_train(rot_dataloader,rotNet1,rot_val_dataloader,split)
-        print('Final accuracy of Task Network with {}% of data is: {:.2f}'.format(int(split*100), acc))
+        print('Final accuracy of Scoring Network with {}% of data is: {:.2f}'.format(int(split*100), acc))
 
         accuracies.append(acc)
 

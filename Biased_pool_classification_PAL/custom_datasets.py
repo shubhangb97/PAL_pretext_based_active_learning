@@ -1,7 +1,10 @@
 import os
-
 import random
+
+
 import numpy as np
+
+
 import torch
 torch.backends.cudnn.deterministic = True
 torch.backends.cudnn.benchmark = False
@@ -38,8 +41,12 @@ def svhn_transformer():
                                 std=[0.2673342858792401, 0.2564384629170883, 0.27615047132568404]),
         ])
 
+
+
+
+
 class CIFAR10(Dataset):
-    def __init__(self, path,args):
+    def __init__(self, path):
         self.cifar10 = datasets.CIFAR10(root=path,
                                         download=True,
                                         train=True,
@@ -58,30 +65,11 @@ class CIFAR10(Dataset):
 
 
 class rot_CIFAR10(Dataset):
-    def __init__(self, path,args):
+    def __init__(self, path):
         self.cifar10 = datasets.CIFAR10(root=path,
                                         download=True,
                                         train=True,
                                         transform=cifar10_transformer())
-
-
-        num_classes=10
-        len1=len(self.cifar10)
-
-        self.full_labels=[]
-
-        #Adding label noise
-
-        for i in range(len1):
-            r1=random.uniform(0,1)
-            if(r1<args.noise_level):
-                r2=random.uniform(0,num_classes)
-                r3=int(r2)
-                ls1=r3
-            else:
-                _,ls1=self.cifar10[i]
-
-            self.full_labels.append(ls1)
 
     def rotate_img(self,img, rot):
         if rot == 0: # 0 degrees rotation
@@ -99,11 +87,9 @@ class rot_CIFAR10(Dataset):
     def __getitem__(self, index):
         if isinstance(index, np.float64):
             index = index.astype(np.int64)
+
         data, target = self.cifar10[index]
         data=np.asarray(data)
-
-        target=self.full_labels[index]
-
 
         data=np.moveaxis(data,0,-1)
         data0=data
@@ -117,6 +103,7 @@ class rot_CIFAR10(Dataset):
         data180=np.moveaxis(data180,2,0)
         data270=np.moveaxis(data270,2,0)
 
+
         data0=torch.from_numpy(data0.copy()).float()
         data90=torch.from_numpy(data90.copy()).float()
         data180=torch.from_numpy(data180.copy()).float()
@@ -126,6 +113,7 @@ class rot_CIFAR10(Dataset):
         target90=torch.from_numpy(np.array(1)).long()
         target180=torch.from_numpy(np.array(2)).long()
         target270=torch.from_numpy(np.array(3)).long()
+
 
         dataFull=torch.stack([data0,data90,data180,data270],dim=0)
 
@@ -138,28 +126,11 @@ class rot_CIFAR10(Dataset):
         return len(self.cifar10)
 
 class rot_CIFAR100(Dataset):
-    def __init__(self, path, args):
+    def __init__(self, path):
         self.cifar100 = datasets.CIFAR100(root=path,
                                         download=True,
                                         train=True,
                                         transform=cifar100_transformer())
-
-
-        num_classes=100
-        len1=len(self.cifar100)
-
-        self.full_labels=[]
-
-        for i in range(len1):
-            r1=random.uniform(0,1)
-            if(r1<args.noise_level):
-                r2=random.uniform(0,num_classes)
-                r3=int(r2)
-                ls1=r3
-            else:
-                _,ls1=self.cifar100[i]
-
-            self.full_labels.append(ls1)#[i][ls1]=1
 
     def rotate_img(self,img, rot):
         if rot == 0: # 0 degrees rotation
@@ -181,7 +152,6 @@ class rot_CIFAR100(Dataset):
 
         data, target = self.cifar100[index]
         data=np.asarray(data)
-        target=self.full_labels[index]
 
 
         data=np.moveaxis(data,0,-1)
@@ -222,7 +192,7 @@ class rot_CIFAR100(Dataset):
 
 
 class CIFAR100(Dataset):
-    def __init__(self, path,args):
+    def __init__(self, path):
         self.cifar100 = datasets.CIFAR100(root=path,
                                         download=True,
                                         train=True,
@@ -242,12 +212,11 @@ class CIFAR100(Dataset):
 
 
 class SVHN(Dataset):
-    def __init__(self, path,args):
+    def __init__(self, path):
         self.svhn = datasets.SVHN(root=path,
                                         download=True,
                                         split='train',
                                         transform=svhn_transformer())
-
 
     def __getitem__(self, index):
         if isinstance(index, np.float64):
@@ -262,31 +231,11 @@ class SVHN(Dataset):
 
 
 class rot_SVHN(Dataset):
-    def __init__(self, path,args):
+    def __init__(self, path):
         self.svhn = datasets.SVHN(root=path,
                                         download=True,
                                         split='train',
                                         transform=svhn_transformer())
-
-
-        num_classes=10
-        len1=len(self.svhn)
-
-        self.full_labels=[]
-
-        # Adding label noise
-
-        for i in range(len1):
-            r1=random.uniform(0,1)
-            if(r1<args.noise_level):
-                r2=random.uniform(0,num_classes)
-                r3=int(r2)
-                ls1=r3
-            else:
-                _,ls1=self.svhn[i]
-
-            self.full_labels.append(ls1)
-
 
     def rotate_img(self,img, rot):
         if rot == 0: # 0 degrees rotation
@@ -307,7 +256,6 @@ class rot_SVHN(Dataset):
 
         data, target = self.svhn[index]
         data=np.asarray(data)
-        target=self.full_labels[index]
 
 
         data=np.moveaxis(data,0,-1)
@@ -321,7 +269,6 @@ class rot_SVHN(Dataset):
         data90=np.moveaxis(data90,2,0)
         data180=np.moveaxis(data180,2,0)
         data270=np.moveaxis(data270,2,0)
-
 
         data0=torch.from_numpy(data0.copy()).float()
         data90=torch.from_numpy(data90.copy()).float()

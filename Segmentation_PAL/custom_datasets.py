@@ -8,7 +8,6 @@ from torchvision import datasets, transforms
 from torch.utils.data import Dataset, DataLoader
 import torchvision
 from skimage import transform
-from utils import *
 from helper import *
 import cv2
 import json

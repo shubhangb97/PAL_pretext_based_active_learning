@@ -1,4 +1,3 @@
-#Run this in place of main.py to run the Random sampling baseline with hyperparameters in arguments
 import os
 os.environ['PYTHONHASHSEED']=str(101)
 
@@ -28,7 +27,6 @@ import vggcifar
 import samplerMulti2
 from custom_datasets import *
 from solverMulti import Solver
-from utils import *
 import arguments
 
 def cifar10_transformer():
@@ -51,15 +49,6 @@ def cifar100_transformer():
         ])
 
 
-def caltech256_transformer():
-    return transforms.Compose([
-            transforms.Lambda(lambda x: x.convert("RGB") ),
-            transforms.RandomHorizontalFlip(),
-            transforms.Resize((224,224)),
-            transforms.ToTensor(),
-            transforms.Normalize(mean=[0.5070751592371323, 0.48654887331495095, 0.4409178433670343],
-                                std=[0.2673342858792401, 0.2564384629170883, 0.27615047132568404]),
-        ])
 
 def svhn_transformer():
     return transforms.Compose([
@@ -68,18 +57,11 @@ def svhn_transformer():
             transforms.Normalize(mean=[0.5070751592371323, 0.48654887331495095, 0.4409178433670343],
                                 std=[0.2673342858792401, 0.2564384629170883, 0.27615047132568404]),
         ])
-def caltech101_transformer():
-    return transforms.Compose([
-            transforms.Lambda(lambda x: x.convert("RGB") ),
-            transforms.RandomHorizontalFlip(),
-            transforms.Resize((224,224)),
-            transforms.ToTensor(),
-            transforms.Normalize(mean=[0.5070751592371323, 0.48654887331495095, 0.4409178433670343],
-                                std=[0.2673342858792401, 0.2564384629170883, 0.27615047132568404]),
-        ])
 
 
 def main(args):
+
+    print("Seed 101")
 
     if args.dataset == 'cifar10':
         test_dataloader = data.DataLoader(
@@ -110,6 +92,7 @@ def main(args):
         args.initial_budget = 5000
         args.num_classes = 100
 
+
     elif args.dataset == 'svhn' :
         test_dataloader = data.DataLoader(datasets.SVHN(args.data_path,download=True,transform=svhn_transformer(), split='test'),batch_size=args.batch_size,drop_last=False,num_workers=0)
         train_dataset= SVHN(args.data_path,args)
@@ -120,7 +103,6 @@ def main(args):
         args.budget=3660
         args.initial_budget=7325
         args.num_classes=10
-
 
     else:
         raise NotImplementedError
@@ -143,6 +125,8 @@ def main(args):
     rot_dataloader=data.DataLoader(rot_train_dataset,sampler=sampler,batch_size=args.batch_size,drop_last=True,num_workers=0)
     rot_val_dataloader=data.DataLoader(rot_train_dataset,sampler=val_sampler,batch_size=args.batch_size,drop_last=True,num_workers=0)
 
+
+
     solver = Solver(args, test_dataloader)
     samplerRot=samplerMulti2.RotSampler(args.budget,args)
     splits = [0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4]
@@ -153,9 +137,11 @@ def main(args):
     accuracies = []
 
     for split in splits:
+
         task_model = vggcifar.vgg16_bn(num_classes=args.num_classes)
 
         rotNet1=RotNetMulti(num_classes=args.num_classes,num_rotations=4)
+
         rotNet1.cuda()
 
         task_model=task_model.cuda()
@@ -177,12 +163,11 @@ def main(args):
                                                unlabeled_dataloader,num_img1)
 
 
-        print('Final accuracy of Task Network with {}% of data is: {:.2f}'.format(int(split*100), acc))
+        print('Final accuracy of Scoring Network with {}% of data is: {:.2f}'.format(int(split*100), acc))
 
         accuracies.append(acc)
 
-        #sample using Random sampling
-
+        #sample
         new_random=random.sample(list(remain_indices),args.budget)
         current_indices = list(current_indices) + list(new_random)
         sampler = data.sampler.SubsetRandomSampler(current_indices)
